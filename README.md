@@ -4,15 +4,24 @@ One command that shows how much of each AI subscription you have used, when each
 
 ```
 $ quotas
-PROVIDER  PLAN  WINDOW  USED  RESETS
-claude    max   5h       33%  in 2h 13m (Sep 19 14:13)
-claude    max   week     13%  in 3d 0h (Sep 22 12:00)
-codex     pro   week     11%  in 6d 18h (Sep 26 12:51)
-zai       pro   5h        0%  -
-zai       pro   week      1%  in 3d 17h (Sep 23 12:00)
-grok      -     week     72%  in 1d 17h (Sep 21 12:04)
-Verdict: use zai — 99% headroom on its tightest window (week), resets in 3d 17h.
+claude · max
+  5h    [██░░░░░░░░░░░░░░░░░░]  11%  resets in 4h 9m (Sep 19 23:10)
+  week  [█████████████░░░░░░░]  67%  resets in 4d 1h (Sep 23 21:00)
+
+codex · pro
+  week  [███░░░░░░░░░░░░░░░░░]  13%  resets in 6d 17h (Sep 26 12:51)
+
+zai · pro
+  5h    [██░░░░░░░░░░░░░░░░░░]   9%  resets in 4h 40m (Sep 19 23:40)
+  week  [░░░░░░░░░░░░░░░░░░░░]   1%  resets in 3d 17h (Sep 23 12:00)
+
+grok
+  week  [██████████████░░░░░░]  72%  resets in 1d 17h (Sep 21 12:04)
+
+Verdict: use zai — 91% headroom on its tightest window (5h), resets in 4h 40m.
 ```
+
+Each provider has its own accent color and each bar is colored by severity (green under 50%, yellow under 80%, red above). Colors turn off automatically when piped, or with `NO_COLOR=1`.
 
 Supported providers: **Claude** (claude.ai Pro/Max via Claude Code), **Codex** (ChatGPT Plus/Pro), **Z.ai** (GLM coding plan), **Grok** (SuperGrok via the Grok CLI).
 

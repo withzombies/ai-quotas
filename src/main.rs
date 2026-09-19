@@ -43,8 +43,13 @@ fn main() {
             .collect()
     });
 
-    print!("{}", render::table(&statuses, now, &TimeZone::system()));
-    println!("{}", verdict::verdict_line(&statuses, now));
+    let color = std::io::IsTerminal::is_terminal(&std::io::stdout())
+        && std::env::var_os("NO_COLOR").is_none();
+    print!(
+        "{}",
+        render::table(&statuses, now, &TimeZone::system(), color)
+    );
+    println!("\n{}", verdict::verdict_line(&statuses, now));
 
     if !statuses.iter().any(|s| s.ok()) {
         std::process::exit(1);

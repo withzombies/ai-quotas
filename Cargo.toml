@@ -3,7 +3,7 @@ name = "quotas"
 version = "0.1.0"
 edition = "2024"
 description = "CLI showing quota usage and reset times across AI subscriptions (Claude, Codex, Z.ai, Grok)"
-license = "MIT"
+license = "Apache-2.0"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }

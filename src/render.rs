@@ -2,73 +2,106 @@ use crate::model::{ProviderStatus, human_duration};
 use jiff::Timestamp;
 use jiff::tz::TimeZone;
 
-/// Render the status table. Pure: fixed `now` and `tz` give fixed output.
-pub fn table(statuses: &[ProviderStatus], now: Timestamp, tz: &TimeZone) -> String {
-    let mut rows: Vec<[String; 5]> = vec![[
-        "PROVIDER".into(),
-        "PLAN".into(),
-        "WINDOW".into(),
-        "USED".into(),
-        "RESETS".into(),
-    ]];
+const BAR_WIDTH: usize = 20;
 
-    for s in statuses {
-        let plan = s.plan.clone().unwrap_or_else(|| "-".into());
-        if let Some(reason) = &s.error {
-            rows.push([
-                s.name.into(),
-                plan,
-                format!("unavailable: {reason}"),
-                String::new(),
-                String::new(),
-            ]);
-            continue;
-        }
-        for w in &s.windows {
-            let used = match w.used_pct {
-                Some(pct) => format!("{pct:.0}%"),
-                None => "?".into(),
-            };
-            let resets = match w.resets_at {
-                Some(at) => format!(
-                    "in {} ({})",
-                    human_duration((at - now).get_seconds()),
-                    at.to_zoned(tz.clone()).strftime("%b %d %H:%M")
-                ),
-                None => "-".into(),
-            };
-            rows.push([s.name.into(), plan.clone(), w.label.clone(), used, resets]);
+const RESET: &str = "\x1b[0m";
+const DIM: &str = "2";
+const RED: &str = "38;5;203";
+const YELLOW: &str = "38;5;179";
+const GREEN: &str = "38;5;114";
+
+struct Style {
+    enabled: bool,
+}
+
+impl Style {
+    fn paint(&self, code: &str, text: &str) -> String {
+        if self.enabled {
+            format!("\x1b[{code}m{text}{RESET}")
+        } else {
+            text.to_string()
         }
     }
+}
 
-    let mut widths = [0usize; 5];
-    for row in &rows {
-        for (i, cell) in row.iter().enumerate() {
-            widths[i] = widths[i].max(cell.chars().count());
-        }
+/// Every provider keeps a fixed accent color so rows are recognizable at a glance.
+fn provider_color(name: &str) -> &'static str {
+    match name {
+        "claude" => "1;38;5;208", // orange
+        "codex" => "1;38;5;75",   // blue
+        "zai" => "1;38;5;170",    // purple
+        "grok" => "1;38;5;114",   // green
+        _ => "1",
     }
+}
 
-    let mut out = String::new();
-    for row in &rows {
-        let mut line = String::new();
-        for (i, cell) in row.iter().enumerate() {
-            let pad = " ".repeat(widths[i] - cell.chars().count());
-            if i == 3 {
-                // USED is right-aligned.
-                line.push_str(&pad);
-                line.push_str(cell);
-            } else {
-                line.push_str(cell);
-                line.push_str(&pad);
+fn severity_color(pct: f64) -> &'static str {
+    if pct >= 80.0 {
+        RED
+    } else if pct >= 50.0 {
+        YELLOW
+    } else {
+        GREEN
+    }
+}
+
+fn bar(pct: f64) -> String {
+    let filled =
+        ((pct / 100.0 * BAR_WIDTH as f64).round() as i64).clamp(0, BAR_WIDTH as i64) as usize;
+    format!("{}{}", "█".repeat(filled), "░".repeat(BAR_WIDTH - filled))
+}
+
+/// Render grouped provider blocks with usage bars. Pure: fixed `now`, `tz`,
+/// and `color` give fixed output.
+pub fn table(statuses: &[ProviderStatus], now: Timestamp, tz: &TimeZone, color: bool) -> String {
+    let sty = Style { enabled: color };
+    let label_width = statuses
+        .iter()
+        .flat_map(|s| &s.windows)
+        .map(|w| w.label.chars().count())
+        .max()
+        .unwrap_or(0);
+
+    let blocks: Vec<String> = statuses
+        .iter()
+        .map(|s| {
+            let name = sty.paint(provider_color(s.name), s.name);
+            if let Some(reason) = &s.error {
+                return format!(
+                    "{name} · {}\n",
+                    sty.paint(RED, &format!("unavailable: {reason}"))
+                );
             }
-            if i < 4 {
-                line.push_str("  ");
+            let mut block = match &s.plan {
+                Some(plan) => format!("{name} · {}\n", sty.paint(DIM, plan)),
+                None => format!("{name}\n"),
+            };
+            for w in &s.windows {
+                let (bar_str, pct_str, code) = match w.used_pct {
+                    Some(pct) => (bar(pct), format!("{pct:.0}%"), severity_color(pct)),
+                    None => ("░".repeat(BAR_WIDTH), "?".to_string(), DIM),
+                };
+                let resets = match w.resets_at {
+                    Some(at) => format!(
+                        "resets in {} ({})",
+                        human_duration((at - now).get_seconds()),
+                        at.to_zoned(tz.clone()).strftime("%b %d %H:%M")
+                    ),
+                    None => "-".to_string(),
+                };
+                block.push_str(&format!(
+                    "  {:<label_width$}  [{}]  {}  {}\n",
+                    w.label,
+                    sty.paint(code, &bar_str),
+                    sty.paint(code, &format!("{pct_str:>4}")),
+                    sty.paint(DIM, &resets),
+                ));
             }
-        }
-        out.push_str(line.trim_end());
-        out.push('\n');
-    }
-    out
+            block
+        })
+        .collect();
+
+    blocks.join("\n")
 }
 
 #[cfg(test)]
@@ -86,9 +119,8 @@ mod tests {
 
     const NOW: &str = "2026-09-19T19:00:00Z"; // noon in Los Angeles
 
-    #[test]
-    fn renders_windows_with_local_reset_times() {
-        let statuses = [ProviderStatus {
+    fn claude_status() -> ProviderStatus {
+        ProviderStatus {
             name: "claude",
             plan: Some("max".into()),
             windows: vec![
@@ -104,17 +136,21 @@ mod tests {
                 },
             ],
             error: None,
-        }];
-        let expected = "\
-PROVIDER  PLAN  WINDOW  USED  RESETS
-claude    max   5h       33%  in 2h 13m (Sep 19 14:13)
-claude    max   week     13%  in 3d 0h (Sep 22 12:00)
-";
-        assert_eq!(table(&statuses, ts(NOW), &tz()), expected);
+        }
     }
 
     #[test]
-    fn renders_unavailable_and_partial_rows() {
+    fn renders_grouped_windows_with_bars_and_local_times() {
+        let expected = "\
+claude · max
+  5h    [███████░░░░░░░░░░░░░]   33%  resets in 2h 13m (Sep 19 14:13)
+  week  [███░░░░░░░░░░░░░░░░░]   13%  resets in 3d 0h (Sep 22 12:00)
+";
+        assert_eq!(table(&[claude_status()], ts(NOW), &tz(), false), expected);
+    }
+
+    #[test]
+    fn renders_partial_and_unavailable_blocks() {
         let statuses = [
             ProviderStatus {
                 name: "zai",
@@ -134,18 +170,45 @@ claude    max   week     13%  in 3d 0h (Sep 22 12:00)
             },
         ];
         let expected = "\
-PROVIDER  PLAN  WINDOW                                         USED  RESETS
-zai       -     unknown                                           ?  -
-grok      -     unavailable: token expired — run 'grok login'
+zai
+  unknown  [░░░░░░░░░░░░░░░░░░░░]     ?  -
+
+grok · unavailable: token expired — run 'grok login'
 ";
-        assert_eq!(table(&statuses, ts(NOW), &tz()), expected);
+        assert_eq!(table(&statuses, ts(NOW), &tz(), false), expected);
     }
 
     #[test]
-    fn header_only_when_no_statuses() {
-        assert_eq!(
-            table(&[], ts(NOW), &tz()),
-            "PROVIDER  PLAN  WINDOW  USED  RESETS\n"
+    fn empty_input_renders_nothing() {
+        assert_eq!(table(&[], ts(NOW), &tz(), false), "");
+    }
+
+    #[test]
+    fn color_mode_applies_provider_accent_and_severity() {
+        let mut status = claude_status();
+        status.windows.truncate(1);
+        status.windows[0].used_pct = Some(90.0);
+        let out = table(&[status], ts(NOW), &tz(), true);
+        assert!(
+            out.contains("\x1b[1;38;5;208mclaude\x1b[0m"),
+            "provider accent missing: {out:?}"
         );
+        assert!(
+            out.contains("\x1b[38;5;203m"),
+            "red severity missing: {out:?}"
+        );
+        assert!(
+            out.contains("\x1b[2mmax\x1b[0m"),
+            "dim plan missing: {out:?}"
+        );
+    }
+
+    #[test]
+    fn bar_fill_is_proportional_and_clamped() {
+        assert_eq!(bar(0.0), "░".repeat(20));
+        assert_eq!(bar(100.0), "█".repeat(20));
+        assert_eq!(bar(150.0), "█".repeat(20));
+        assert_eq!(bar(-5.0), "░".repeat(20));
+        assert_eq!(bar(50.0), format!("{}{}", "█".repeat(10), "░".repeat(10)));
     }
 }
