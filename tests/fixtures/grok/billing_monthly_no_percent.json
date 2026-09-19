@@ -1,0 +1,12 @@
+{
+  "config": {
+    "currentPeriod": {
+      "type": "USAGE_PERIOD_TYPE_MONTHLY",
+      "start": "2026-09-01T00:00:00Z",
+      "end": "2026-10-01T00:00:00Z"
+    },
+    "monthlyLimit": { "val": 3000 },
+    "used": {},
+    "isUnifiedBillingUser": false
+  }
+}
