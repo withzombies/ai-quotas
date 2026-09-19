@@ -30,7 +30,7 @@ cargo install --path .
 
 | Provider | What it needs | How to get it |
 |---|---|---|
-| claude | Claude Code login | Log in to [Claude Code](https://claude.com/claude-code) once. macOS: read from the Keychain; Linux: `~/.claude/.credentials.json`. |
+| claude | Claude Code login | Log in to [Claude Code](https://claude.com/claude-code) once. Read from `CLAUDE_CODE_OAUTH_TOKEN` if set, else the macOS Keychain, else `~/.claude/.credentials.json`. |
 | codex | Codex CLI login | Run `codex login` once (`~/.codex/auth.json`). |
 | zai | Coding-plan API key | Set `ZAI_API_KEY`, or write the key to `~/.config/quotas/zai-api-key`. Keys: [z.ai/manage-apikey](https://z.ai/manage-apikey/apikey-list). |
 | grok | Grok CLI login | Install the [Grok CLI](https://docs.x.ai/build/cli/reference) and run `grok login` once (`~/.grok/auth.json`). A plain `XAI_API_KEY` cannot query billing. |

@@ -166,6 +166,19 @@ pub fn zai_key_from(
     })
 }
 
+/// An env token is opaque: no expiry or scope metadata to pre-check, so it is
+/// passed through and the API response decides.
+pub fn claude_creds_from_env(token: Option<String>) -> Option<ClaudeCreds> {
+    let token = token?.trim().to_string();
+    if token.is_empty() {
+        return None;
+    }
+    Some(ClaudeCreds {
+        access_token: token,
+        plan: None,
+    })
+}
+
 // ---------- I/O (thin, untested) ----------
 
 fn home() -> Option<PathBuf> {
@@ -182,9 +195,16 @@ fn read(path: PathBuf) -> Result<String, String> {
     std::fs::read_to_string(&path).map_err(|e| format!("cannot read {}: {e}", path.display()))
 }
 
-/// macOS: Keychain first (that is where Claude Code writes), then the
-/// credentials file used on Linux and as a general fallback.
-pub fn load_claude_creds(now: Timestamp) -> Result<ClaudeCreds, String> {
+/// All Claude credential sources present on this machine, in Claude Code's own
+/// precedence: CLAUDE_CODE_OAUTH_TOKEN env, macOS Keychain, credentials file.
+/// The caller tries them in order — a source can hold a token the API rejects
+/// (setup tokens are inference-only) while a later source works, so returning
+/// only the first would wrongly block the provider.
+pub fn claude_cred_sources(now: Timestamp) -> Vec<(&'static str, Result<ClaudeCreds, String>)> {
+    let mut sources = Vec::new();
+    if let Some(creds) = claude_creds_from_env(std::env::var("CLAUDE_CODE_OAUTH_TOKEN").ok()) {
+        sources.push(("env token", Ok(creds)));
+    }
     #[cfg(target_os = "macos")]
     {
         let out = std::process::Command::new("security")
@@ -199,15 +219,15 @@ pub fn load_claude_creds(now: Timestamp) -> Result<ClaudeCreds, String> {
             && out.status.success()
         {
             let json = String::from_utf8_lossy(&out.stdout);
-            return parse_claude_creds(json.trim(), now);
+            sources.push(("keychain", parse_claude_creds(json.trim(), now)));
         }
     }
-    let dir = env_path("CLAUDE_CONFIG_DIR")
-        .or_else(|| home().map(|h| h.join(".claude")))
-        .ok_or("cannot determine home directory")?;
-    let json = read(dir.join(".credentials.json"))
-        .map_err(|e| format!("no credentials — run Claude Code to log in ({e})"))?;
-    parse_claude_creds(&json, now)
+    if let Some(dir) = env_path("CLAUDE_CONFIG_DIR").or_else(|| home().map(|h| h.join(".claude")))
+        && let Ok(json) = read(dir.join(".credentials.json"))
+    {
+        sources.push(("credentials file", parse_claude_creds(&json, now)));
+    }
+    sources
 }
 
 pub fn load_codex_creds() -> Result<CodexCreds, String> {
@@ -358,6 +378,15 @@ mod tests {
         assert_eq!(s, rfc);
         assert_eq!(ms, rfc);
         assert_eq!(parse_expiry(&serde_json::json!(null)), None);
+    }
+
+    #[test]
+    fn claude_env_token_passes_through_untouched() {
+        let creds = claude_creds_from_env(Some(" sk-ant-oat01-envtoken\n".into())).unwrap();
+        assert_eq!(creds.access_token, "sk-ant-oat01-envtoken");
+        assert!(creds.plan.is_none());
+        assert!(claude_creds_from_env(Some("  ".into())).is_none());
+        assert!(claude_creds_from_env(None).is_none());
     }
 
     #[test]

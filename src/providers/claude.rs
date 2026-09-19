@@ -4,22 +4,52 @@ use serde::Deserialize;
 
 pub const NAME: &str = "claude";
 pub const BASE_URL: &str = "https://api.anthropic.com";
-/// Without a claude-code User-Agent the endpoint returns persistent 429s.
-const USER_AGENT: &str = "claude-code/2.1.278";
+/// Exactly what Claude Code 2.1.226 sends (verified against the binary).
+const USER_AGENT: &str = "claude-cli/2.1.226";
 const OAUTH_BETA: &str = "oauth-2025-04-20";
 
 pub fn fetch(base_url: &str, now: Timestamp) -> ProviderStatus {
     try_fetch(base_url, now).unwrap_or_else(|e| ProviderStatus::unavailable(NAME, e))
 }
 
+/// A source can hold a token the API rejects — setup tokens and
+/// CLAUDE_CODE_OAUTH_TOKEN are inference-only and this endpoint answers them
+/// with a persistent 429 (verified: /api/oauth/profile says
+/// oauth_scope_insufficient for the same token). So walk every source before
+/// giving up.
 fn try_fetch(base_url: &str, now: Timestamp) -> Result<ProviderStatus, String> {
-    let creds = crate::creds::load_claude_creds(now)?;
+    let sources = crate::creds::claude_cred_sources(now);
+    if sources.is_empty() {
+        return Err("no credentials — run 'claude auth login'".to_string());
+    }
+    let mut failures: Vec<String> = Vec::new();
+    for (label, creds) in sources {
+        match creds.and_then(|c| request_usage(base_url, c)) {
+            Ok(status) => return Ok(status),
+            Err(e) => {
+                let hint = if label == "env token" && e.contains("429") {
+                    " (setup tokens are inference-only; run 'claude auth login')"
+                } else {
+                    ""
+                };
+                failures.push(format!("{label}: {e}{hint}"));
+            }
+        }
+    }
+    Err(failures.join("; "))
+}
+
+fn request_usage(
+    base_url: &str,
+    creds: crate::creds::ClaudeCreds,
+) -> Result<ProviderStatus, String> {
     let url = format!("{base_url}/api/oauth/usage");
     let headers = [
         ("Authorization", format!("Bearer {}", creds.access_token)),
         ("anthropic-beta", OAUTH_BETA.to_string()),
         ("Content-Type", "application/json".to_string()),
         ("User-Agent", USER_AGENT.to_string()),
+        ("x-app", "cli".to_string()),
     ];
     let mut resp = crate::http::get(&url, &headers)?;
     let mut via_curl = "";
