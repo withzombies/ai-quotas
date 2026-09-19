@@ -162,7 +162,7 @@ pub fn zai_key_from(
         .map(|k| k.trim().to_string())
         .filter(|k| !k.is_empty());
     key.ok_or_else(|| {
-        "no API key (set ZAI_API_KEY or write ~/.config/quotas/zai-api-key)".to_string()
+        "no API key (set ZAI_API_KEY or write ~/.config/ai-quotas/zai-api-key)".to_string()
     })
 }
 
@@ -253,7 +253,7 @@ pub fn load_grok_creds(now: Timestamp) -> Result<GrokCreds, String> {
 pub fn load_zai_key() -> Result<String, String> {
     let env_key = std::env::var("ZAI_API_KEY").ok();
     let file = home()
-        .map(|h| h.join(".config/quotas/zai-api-key"))
+        .map(|h| h.join(".config/ai-quotas/zai-api-key"))
         .and_then(|p| std::fs::read_to_string(p).ok());
     zai_key_from(env_key, file)
 }

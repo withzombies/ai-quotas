@@ -1,8 +1,8 @@
+use ai_quotas::model::ProviderStatus;
+use ai_quotas::{providers, render, verdict};
 use clap::Parser;
 use jiff::Timestamp;
 use jiff::tz::TimeZone;
-use quotas::model::ProviderStatus;
-use quotas::{providers, render, verdict};
 
 #[derive(Parser)]
 #[command(

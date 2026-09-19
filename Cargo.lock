@@ -3,6 +3,17 @@
 version = 4
 
 [[package]]
+name = "ai-quotas"
+version = "1.0.0"
+dependencies = [
+ "clap",
+ "jiff",
+ "reqwest",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "anstream"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -907,17 +918,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "985e7ec9bb745e6ce6535b544d84d6cd6f7ad8bd711c398938ae983b91a766d9"
 dependencies = [
  "unicode-ident",
-]
-
-[[package]]
-name = "quotas"
-version = "1.0.0"
-dependencies = [
- "clap",
- "jiff",
- "reqwest",
- "serde",
- "serde_json",
 ]
 
 [[package]]

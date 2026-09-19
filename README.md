@@ -1,9 +1,9 @@
-# quotas
+# ai-quotas
 
 One command that shows how much of each AI subscription you have used, when each limit resets (in your local timezone), and which subscription to use right now.
 
 ```
-$ quotas
+$ ai-quotas
 claude · max
   5h    [██░░░░░░░░░░░░░░░░░░]  11%  resets in 4h 9m (Sep 19 23:10)
   week  [█████████████░░░░░░░]  67%  resets in 4d 1h (Sep 23 21:00)
@@ -35,13 +35,13 @@ cargo install --path .
 
 ## Setup
 
-`quotas` reuses the credentials that each provider's own tool already stores. It never writes to any credential store.
+`ai-quotas` reuses the credentials that each provider's own tool already stores. It never writes to any credential store.
 
 | Provider | What it needs | How to get it |
 |---|---|---|
 | claude | Claude Code login | Log in to [Claude Code](https://claude.com/claude-code) once. Read from `CLAUDE_CODE_OAUTH_TOKEN` if set, else the macOS Keychain, else `~/.claude/.credentials.json`. |
 | codex | Codex CLI login | Run `codex login` once (`~/.codex/auth.json`). |
-| zai | Coding-plan API key | Set `ZAI_API_KEY`, or write the key to `~/.config/quotas/zai-api-key`. Keys: [z.ai/manage-apikey](https://z.ai/manage-apikey/apikey-list). |
+| zai | Coding-plan API key | Set `ZAI_API_KEY`, or write the key to `~/.config/ai-quotas/zai-api-key`. Keys: [z.ai/manage-apikey](https://z.ai/manage-apikey/apikey-list). |
 | grok | Grok CLI login | Install the [Grok CLI](https://docs.x.ai/build/cli/reference) and run `grok login` once (`~/.grok/auth.json`). A plain `XAI_API_KEY` cannot query billing. |
 
 A provider that is not set up simply shows an `unavailable` row with the reason; the others still work.
@@ -49,8 +49,8 @@ A provider that is not set up simply shows an `unavailable` row with the reason;
 ## Usage
 
 ```sh
-quotas                      # all providers, table + verdict
-quotas --provider claude    # one provider (repeatable)
+ai-quotas                   # all providers, table + verdict
+ai-quotas --provider claude # one provider (repeatable)
 ```
 
 Exit code 0 if at least one provider returned data, 1 if none did.

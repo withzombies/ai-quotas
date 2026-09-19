@@ -22,7 +22,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo build --release
-      - run: tar -czf quotas-${{ matrix.target }}.tar.gz -C target/release quotas
-      - run: gh release upload "${{ github.event.release.tag_name }}" "quotas-${{ matrix.target }}.tar.gz"
+      - run: tar -czf ai-quotas-${{ matrix.target }}.tar.gz -C target/release ai-quotas
+      - run: gh release upload "${{ github.event.release.tag_name }}" "ai-quotas-${{ matrix.target }}.tar.gz"
         env:
           GH_TOKEN: ${{ github.token }}

@@ -1,4 +1,4 @@
-# quotas
+# ai-quotas
 
 CLI that shows quota usage and reset times for AI subscriptions (Claude, Codex/ChatGPT, Z.ai, Grok), then recommends which one to use now. All four providers are private, undocumented APIs — treat every schema as unstable.
 
