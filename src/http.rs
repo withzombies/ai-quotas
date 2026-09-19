@@ -20,6 +20,22 @@ pub fn get(url: &str, headers: &[(&str, String)]) -> Result<Response, String> {
     Ok(Response { status, body })
 }
 
+pub fn post_json(url: &str, body: &str) -> Result<Response, String> {
+    let client = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .build()
+        .map_err(|e| format!("http client: {e}"))?;
+    let resp = client
+        .post(url)
+        .header("Content-Type", "application/json")
+        .body(body.to_string())
+        .send()
+        .map_err(|e| format!("request failed: {e}"))?;
+    let status = resp.status().as_u16();
+    let body = resp.text().map_err(|e| format!("reading body: {e}"))?;
+    Ok(Response { status, body })
+}
+
 /// Fallback for endpoints that reject non-curl TLS fingerprints. The request
 /// is passed as a curl config file on stdin so tokens never appear in the
 /// process list.

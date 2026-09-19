@@ -5,25 +5,74 @@ use serde::Deserialize;
 pub const NAME: &str = "codex";
 pub const BASE_URL: &str = "https://chatgpt.com/backend-api";
 
+const REFRESH_URL: &str = "https://auth.openai.com/oauth/token";
+const REFRESH_CLIENT_ID: &str = "app_EMoamEEZ73f0CkXaXp7hrann";
+
 pub fn fetch(base_url: &str, now: Timestamp) -> ProviderStatus {
     try_fetch(base_url, now).unwrap_or_else(|e| ProviderStatus::unavailable(NAME, e))
 }
 
 fn try_fetch(base_url: &str, now: Timestamp) -> Result<ProviderStatus, String> {
     let creds = crate::creds::load_codex_creds()?;
-    let mut headers = vec![
-        ("Authorization", format!("Bearer {}", creds.access_token)),
-        ("Accept", "application/json".to_string()),
-        ("User-Agent", "codex-cli".to_string()),
-    ];
-    if let Some(account_id) = &creds.account_id {
-        headers.push(("ChatGPT-Account-Id", account_id.clone()));
+    let mut resp = usage_request(base_url, &creds.access_token, creds.account_id.as_deref())?;
+    if matches!(resp.status, 401 | 403)
+        && let Some(refresh_token) = &creds.refresh_token
+    {
+        // Access tokens live only hours. Refresh in memory only — writing
+        // auth.json back would race with a running Codex CLI.
+        let fresh = refresh_access_token(refresh_token)?;
+        resp = usage_request(base_url, &fresh, creds.account_id.as_deref())?;
     }
-    let resp = crate::http::get(&format!("{base_url}/wham/usage"), &headers)?;
     if resp.status != 200 {
         return Err(format!("HTTP {}", resp.status));
     }
     parse_usage(&resp.body, now)
+}
+
+fn usage_request(
+    base_url: &str,
+    access_token: &str,
+    account_id: Option<&str>,
+) -> Result<crate::http::Response, String> {
+    let mut headers = vec![
+        ("Authorization", format!("Bearer {access_token}")),
+        ("Accept", "application/json".to_string()),
+        ("User-Agent", "codex-cli".to_string()),
+    ];
+    if let Some(account_id) = account_id {
+        headers.push(("ChatGPT-Account-Id", account_id.to_string()));
+    }
+    crate::http::get(&format!("{base_url}/wham/usage"), &headers)
+}
+
+fn refresh_access_token(refresh_token: &str) -> Result<String, String> {
+    let body = serde_json::json!({
+        "client_id": REFRESH_CLIENT_ID,
+        "grant_type": "refresh_token",
+        "refresh_token": refresh_token,
+        "scope": "openid profile email",
+    })
+    .to_string();
+    let resp = crate::http::post_json(REFRESH_URL, &body)?;
+    if resp.status != 200 {
+        return Err(format!(
+            "token refresh failed: HTTP {} — run 'codex login'",
+            resp.status
+        ));
+    }
+    parse_refresh_response(&resp.body)
+}
+
+fn parse_refresh_response(body: &str) -> Result<String, String> {
+    #[derive(Deserialize)]
+    struct Refresh {
+        access_token: Option<String>,
+    }
+    let refresh: Refresh =
+        serde_json::from_str(body).map_err(|e| format!("bad refresh response: {e}"))?;
+    refresh
+        .access_token
+        .ok_or_else(|| "no access_token in refresh response".to_string())
 }
 
 #[derive(Deserialize)]
@@ -202,6 +251,26 @@ mod tests {
         assert_eq!(
             summary,
             vec![("1h", Some(100.0)), ("codex-max 30d", Some(3.0))]
+        );
+    }
+
+    #[test]
+    fn refresh_response_yields_access_token() {
+        assert_eq!(
+            parse_refresh_response(
+                r#"{"access_token": "at2", "refresh_token": "rt2", "id_token": "jwt"}"#
+            )
+            .unwrap(),
+            "at2"
+        );
+        assert_eq!(
+            parse_refresh_response("{}").unwrap_err(),
+            "no access_token in refresh response"
+        );
+        assert!(
+            parse_refresh_response("gateway error")
+                .unwrap_err()
+                .starts_with("bad refresh response")
         );
     }
 
