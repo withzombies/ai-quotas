@@ -1,3 +1,9 @@
+mod model;
+mod verdict;
+
+use jiff::Timestamp;
+
 fn main() {
-    println!("quotas: no providers wired up yet");
+    let statuses: Vec<model::ProviderStatus> = Vec::new();
+    println!("{}", verdict::verdict_line(&statuses, Timestamp::now()));
 }
