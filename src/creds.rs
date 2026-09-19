@@ -38,7 +38,7 @@ pub fn parse_claude_creds(json: &str, now: Timestamp) -> Result<ClaudeCreds, Str
     if let Some(ms) = oauth.expires_at
         && Timestamp::from_millisecond(ms).is_ok_and(|exp| exp <= now)
     {
-        return Err("token expired — run Claude Code to refresh".to_string());
+        return Err("token expired — run 'claude auth login'".to_string());
     }
     for required in ["user:inference", "user:profile"] {
         if !oauth.scopes.iter().any(|s| s == required) {
@@ -304,7 +304,7 @@ mod tests {
         );
         assert_eq!(
             err(parse_claude_creds(&expired, ts(NOW))),
-            "token expired — run Claude Code to refresh"
+            "token expired — run 'claude auth login'"
         );
 
         let inference_only = format!(
