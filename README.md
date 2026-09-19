@@ -68,4 +68,4 @@ cargo clippy -- -D warnings
 
 ## License
 
-MIT
+Apache 2.0
