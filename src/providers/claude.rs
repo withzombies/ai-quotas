@@ -14,17 +14,22 @@ pub fn fetch(base_url: &str, now: Timestamp) -> ProviderStatus {
 
 fn try_fetch(base_url: &str, now: Timestamp) -> Result<ProviderStatus, String> {
     let creds = crate::creds::load_claude_creds(now)?;
-    let resp = crate::http::get(
-        &format!("{base_url}/api/oauth/usage"),
-        &[
-            ("Authorization", format!("Bearer {}", creds.access_token)),
-            ("anthropic-beta", OAUTH_BETA.to_string()),
-            ("Content-Type", "application/json".to_string()),
-            ("User-Agent", USER_AGENT.to_string()),
-        ],
-    )?;
+    let url = format!("{base_url}/api/oauth/usage");
+    let headers = [
+        ("Authorization", format!("Bearer {}", creds.access_token)),
+        ("anthropic-beta", OAUTH_BETA.to_string()),
+        ("Content-Type", "application/json".to_string()),
+        ("User-Agent", USER_AGENT.to_string()),
+    ];
+    let mut resp = crate::http::get(&url, &headers)?;
+    let mut via_curl = "";
+    if resp.status == 403 {
+        // Anthropic's edge 403s some non-curl TLS fingerprints.
+        resp = crate::http::get_via_curl(&url, &headers)?;
+        via_curl = " (even via curl)";
+    }
     if resp.status != 200 {
-        return Err(format!("HTTP {}", resp.status));
+        return Err(format!("HTTP {}{via_curl}", resp.status));
     }
     let mut status = parse_usage(&resp.body)?;
     status.plan = creds.plan;
