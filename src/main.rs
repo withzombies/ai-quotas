@@ -1,9 +1,6 @@
-mod model;
-mod render;
-mod verdict;
-
 use jiff::Timestamp;
 use jiff::tz::TimeZone;
+use quotas::{model, render, verdict};
 
 fn main() {
     let statuses: Vec<model::ProviderStatus> = Vec::new();

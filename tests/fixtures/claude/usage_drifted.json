@@ -1,0 +1,12 @@
+{
+  "five_hour": {
+    "utilization": 33.0,
+    "resets_at": "not-a-timestamp"
+  },
+  "seven_day_haiku": {
+    "utilization": 2.0,
+    "resets_at": "2026-09-21T03:00:00+00:00"
+  },
+  "rate_limits_available": true,
+  "usage_overage_included_models": ["claude-fable-5"]
+}
