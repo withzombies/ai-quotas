@@ -3,6 +3,28 @@ use jiff::Timestamp;
 use serde::Deserialize;
 
 pub const NAME: &str = "zai";
+pub const BASE_URL: &str = "https://api.z.ai";
+
+pub fn fetch(base_url: &str) -> ProviderStatus {
+    try_fetch(base_url).unwrap_or_else(|e| ProviderStatus::unavailable(NAME, e))
+}
+
+fn try_fetch(base_url: &str) -> Result<ProviderStatus, String> {
+    let key = crate::creds::load_zai_key()?;
+    let resp = crate::http::get(
+        &format!("{base_url}/api/monitor/usage/quota/limit"),
+        &[
+            // Raw key, deliberately without a Bearer prefix.
+            ("Authorization", key),
+            ("Accept-Language", "en-US,en".to_string()),
+            ("Content-Type", "application/json".to_string()),
+        ],
+    )?;
+    if resp.status != 200 {
+        return Err(format!("HTTP {}", resp.status));
+    }
+    parse_usage(&resp.body)
+}
 
 #[derive(Deserialize)]
 struct Envelope {

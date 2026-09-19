@@ -3,6 +3,28 @@ use jiff::Timestamp;
 use serde::Deserialize;
 
 pub const NAME: &str = "grok";
+pub const BASE_URL: &str = "https://cli-chat-proxy.grok.com/v1";
+
+pub fn fetch(base_url: &str, now: Timestamp) -> ProviderStatus {
+    try_fetch(base_url, now).unwrap_or_else(|e| ProviderStatus::unavailable(NAME, e))
+}
+
+fn try_fetch(base_url: &str, now: Timestamp) -> Result<ProviderStatus, String> {
+    let creds = crate::creds::load_grok_creds(now)?;
+    let mut headers = vec![
+        ("Authorization", format!("Bearer {}", creds.key)),
+        ("X-XAI-Token-Auth", "xai-grok-cli".to_string()),
+        ("x-grok-client-version", "1.0.0".to_string()),
+    ];
+    if let Some(user_id) = &creds.user_id {
+        headers.push(("x-userid", user_id.clone()));
+    }
+    let resp = crate::http::get(&format!("{base_url}/billing?format=credits"), &headers)?;
+    if resp.status != 200 {
+        return Err(format!("HTTP {}", resp.status));
+    }
+    parse_usage(&resp.body)
+}
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]

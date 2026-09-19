@@ -3,13 +3,36 @@ use jiff::Timestamp;
 use serde::Deserialize;
 
 pub const NAME: &str = "codex";
+pub const BASE_URL: &str = "https://chatgpt.com/backend-api";
+
+pub fn fetch(base_url: &str, now: Timestamp) -> ProviderStatus {
+    try_fetch(base_url, now).unwrap_or_else(|e| ProviderStatus::unavailable(NAME, e))
+}
+
+fn try_fetch(base_url: &str, now: Timestamp) -> Result<ProviderStatus, String> {
+    let creds = crate::creds::load_codex_creds()?;
+    let mut headers = vec![
+        ("Authorization", format!("Bearer {}", creds.access_token)),
+        ("Accept", "application/json".to_string()),
+        ("User-Agent", "codex-cli".to_string()),
+    ];
+    if let Some(account_id) = &creds.account_id {
+        headers.push(("ChatGPT-Account-Id", account_id.clone()));
+    }
+    let resp = crate::http::get(&format!("{base_url}/wham/usage"), &headers)?;
+    if resp.status != 200 {
+        return Err(format!("HTTP {}", resp.status));
+    }
+    parse_usage(&resp.body, now)
+}
 
 #[derive(Deserialize)]
 struct Usage {
     plan_type: Option<String>,
     rate_limit: Option<RateLimit>,
-    #[serde(default)]
-    additional_rate_limits: Vec<AdditionalLimit>,
+    /// Arrives as an explicit null on some accounts, so `serde(default)` on a
+    /// bare Vec is not enough.
+    additional_rate_limits: Option<Vec<AdditionalLimit>>,
 }
 
 #[derive(Deserialize)]
@@ -89,7 +112,7 @@ pub fn parse_usage(body: &str, now: Timestamp) -> Result<ProviderStatus, String>
     if let Some(rl) = usage.rate_limit {
         rate_limit_windows(rl, "", now, &mut windows);
     }
-    for extra in usage.additional_rate_limits {
+    for extra in usage.additional_rate_limits.unwrap_or_default() {
         let name = extra
             .limit_name
             .or(extra.metered_feature)

@@ -1,5 +1,7 @@
 {
   "plan_type": "pro",
+  "additional_rate_limits": null,
+  "credits": null,
   "rate_limit": {
     "allowed": true,
     "limit_reached": false,

@@ -17,6 +17,15 @@ pub struct ProviderStatus {
 }
 
 impl ProviderStatus {
+    pub fn unavailable(name: &'static str, reason: impl Into<String>) -> Self {
+        ProviderStatus {
+            name,
+            plan: None,
+            windows: Vec::new(),
+            error: Some(reason.into()),
+        }
+    }
+
     pub fn ok(&self) -> bool {
         self.error.is_none() && !self.windows.is_empty()
     }

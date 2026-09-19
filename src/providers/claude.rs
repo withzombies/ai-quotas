@@ -3,6 +3,33 @@ use jiff::Timestamp;
 use serde::Deserialize;
 
 pub const NAME: &str = "claude";
+pub const BASE_URL: &str = "https://api.anthropic.com";
+/// Without a claude-code User-Agent the endpoint returns persistent 429s.
+const USER_AGENT: &str = "claude-code/2.1.278";
+const OAUTH_BETA: &str = "oauth-2025-04-20";
+
+pub fn fetch(base_url: &str, now: Timestamp) -> ProviderStatus {
+    try_fetch(base_url, now).unwrap_or_else(|e| ProviderStatus::unavailable(NAME, e))
+}
+
+fn try_fetch(base_url: &str, now: Timestamp) -> Result<ProviderStatus, String> {
+    let creds = crate::creds::load_claude_creds(now)?;
+    let resp = crate::http::get(
+        &format!("{base_url}/api/oauth/usage"),
+        &[
+            ("Authorization", format!("Bearer {}", creds.access_token)),
+            ("anthropic-beta", OAUTH_BETA.to_string()),
+            ("Content-Type", "application/json".to_string()),
+            ("User-Agent", USER_AGENT.to_string()),
+        ],
+    )?;
+    if resp.status != 200 {
+        return Err(format!("HTTP {}", resp.status));
+    }
+    let mut status = parse_usage(&resp.body)?;
+    status.plan = creds.plan;
+    Ok(status)
+}
 
 #[derive(Deserialize)]
 struct Usage {
