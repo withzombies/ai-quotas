@@ -1,0 +1,37 @@
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "level": "GLM Coding Max",
+    "limits": [
+      {
+        "type": "TOKENS_LIMIT",
+        "unit": 3,
+        "number": 5,
+        "total": 40000000,
+        "usage": 8123456,
+        "percentage": 20.3,
+        "nextResetTime": 1789830000000
+      },
+      {
+        "type": "TOKENS_LIMIT",
+        "unit": 6,
+        "number": 1,
+        "total": 400000000,
+        "usage": 52000000,
+        "percentage": 13.0,
+        "nextResetTime": 1790200800000
+      },
+      {
+        "type": "TIME_LIMIT",
+        "currentValue": 300,
+        "usage": 45,
+        "percentage": 15.0,
+        "usageDetails": [
+          { "modelCode": "search-prime", "usage": 30 },
+          { "modelCode": "web-reader", "usage": 15 }
+        ]
+      }
+    ]
+  }
+}

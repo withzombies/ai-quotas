@@ -1,0 +1,22 @@
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "level": "GLM Coding Pro",
+    "limits": [
+      {
+        "type": "CREDIT_LIMIT",
+        "unit": 3,
+        "number": 5,
+        "total": 100,
+        "usage": 25,
+        "nextResetTime": 1789830000000
+      },
+      {
+        "type": "MYSTERY_LIMIT",
+        "unit": 9,
+        "number": 2
+      }
+    ]
+  }
+}
