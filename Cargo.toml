@@ -1,6 +1,6 @@
 [package]
 name = "ai-quotas"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2024"
 description = "CLI showing quota usage and reset times across AI subscriptions (Claude, Codex, Z.ai, Grok)"
 license = "Apache-2.0"
