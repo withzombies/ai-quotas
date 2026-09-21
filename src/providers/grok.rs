@@ -94,7 +94,7 @@ pub fn parse_usage(body: &str) -> Result<ProviderStatus, String> {
         .and_then(|s| s.parse::<Timestamp>().ok());
 
     Ok(ProviderStatus {
-        name: NAME,
+        name: NAME.into(),
         plan: billing.subscription_tier,
         windows: vec![QuotaWindow {
             label: label.to_string(),

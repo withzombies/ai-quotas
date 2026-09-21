@@ -104,7 +104,7 @@ pub fn parse_usage(body: &str) -> Result<ProviderStatus, String> {
         return Err("schema mismatch: no usage windows in response".to_string());
     }
     Ok(ProviderStatus {
-        name: NAME,
+        name: NAME.into(),
         plan: None, // filled from credentials (subscriptionType) by the caller
         windows,
         error: None,

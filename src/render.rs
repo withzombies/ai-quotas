@@ -26,7 +26,7 @@ impl Style {
 
 /// Every provider keeps a fixed accent color so rows are recognizable at a glance.
 fn provider_color(name: &str) -> &'static str {
-    match name {
+    match name.split(" (").next().unwrap_or(name) {
         "claude" => "1;38;5;208", // orange
         "codex" => "1;38;5;75",   // blue
         "zai" => "1;38;5;170",    // purple
@@ -65,7 +65,7 @@ pub fn table(statuses: &[ProviderStatus], now: Timestamp, tz: &TimeZone, color: 
     let blocks: Vec<String> = statuses
         .iter()
         .map(|s| {
-            let name = sty.paint(provider_color(s.name), s.name);
+            let name = sty.paint(provider_color(&s.name), &s.name);
             if let Some(reason) = &s.error {
                 return format!(
                     "{name} · {}\n",
@@ -121,7 +121,7 @@ mod tests {
 
     fn claude_status() -> ProviderStatus {
         ProviderStatus {
-            name: "claude",
+            name: "claude".into(),
             plan: Some("max".into()),
             windows: vec![
                 QuotaWindow {
@@ -153,7 +153,7 @@ claude · max
     fn renders_partial_and_unavailable_blocks() {
         let statuses = [
             ProviderStatus {
-                name: "zai",
+                name: "zai".into(),
                 plan: None,
                 windows: vec![QuotaWindow {
                     label: "unknown".into(),
@@ -163,7 +163,7 @@ claude · max
                 error: None,
             },
             ProviderStatus {
-                name: "grok",
+                name: "grok".into(),
                 plan: None,
                 windows: Vec::new(),
                 error: Some("token expired — run 'grok login'".into()),

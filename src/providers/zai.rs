@@ -112,7 +112,7 @@ pub fn parse_usage(body: &str) -> Result<ProviderStatus, String> {
         return Err("schema mismatch: no limits in response".to_string());
     }
     Ok(ProviderStatus {
-        name: NAME,
+        name: NAME.into(),
         plan: data.level,
         windows,
         error: None,

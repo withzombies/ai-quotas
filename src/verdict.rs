@@ -2,7 +2,7 @@ use crate::model::{ProviderStatus, QuotaWindow, human_duration};
 use jiff::Timestamp;
 
 struct Candidate<'a> {
-    name: &'static str,
+    name: &'a str,
     binding: &'a QuotaWindow,
     headroom: f64,
 }
@@ -47,7 +47,7 @@ pub fn verdict_line(statuses: &[ProviderStatus], now: Timestamp) -> String {
         .filter(|s| s.ok())
         .filter_map(|s| {
             binding_window(&s.windows).map(|binding| Candidate {
-                name: s.name,
+                name: &s.name,
                 binding,
                 headroom: (100.0 - binding.used_pct.unwrap()).clamp(0.0, 100.0),
             })
@@ -116,7 +116,7 @@ mod tests {
         windows: &[(&str, Option<f64>, Option<&str>)],
     ) -> ProviderStatus {
         ProviderStatus {
-            name,
+            name: name.into(),
             plan: None,
             windows: windows
                 .iter()
@@ -144,7 +144,7 @@ mod tests {
     fn errored_and_pctless_providers_are_ineligible() {
         let statuses = [
             ProviderStatus {
-                name: "claude",
+                name: "claude".into(),
                 plan: None,
                 windows: Vec::new(),
                 error: Some("no credentials".to_string()),

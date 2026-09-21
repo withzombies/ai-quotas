@@ -53,6 +53,23 @@ ai-quotas                   # all providers, table + verdict
 ai-quotas --provider claude # one provider (repeatable)
 ```
 
+### Multiple Codex profiles
+
+Use repeatable `--codex-profile LABEL=AUTH_JSON_PATH` options to query separate
+Codex logins in one run:
+
+```sh
+ai-quotas --provider claude --provider codex \
+  --codex-profile "Personal=$HOME/.codex/auth.json" \
+  --codex-profile "Work=$HOME/.codex-work/auth.json"
+```
+
+Each profile appears as `codex (Personal)` or `codex (Work)` in the output and
+verdict. Explicit profiles replace the default Codex query; `--provider` filters
+still apply. Labels must be unique and nonempty. Quote arguments containing spaces.
+Credential files are read in place and never modified. Without these options,
+the existing single-profile behavior is unchanged.
+
 Exit code 0 if at least one provider returned data, 1 if none did.
 
 ## How it works

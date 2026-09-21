@@ -10,16 +10,16 @@ pub struct QuotaWindow {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ProviderStatus {
-    pub name: &'static str,
+    pub name: String,
     pub plan: Option<String>,
     pub windows: Vec<QuotaWindow>,
     pub error: Option<String>,
 }
 
 impl ProviderStatus {
-    pub fn unavailable(name: &'static str, reason: impl Into<String>) -> Self {
+    pub fn unavailable(name: impl Into<String>, reason: impl Into<String>) -> Self {
         ProviderStatus {
-            name,
+            name: name.into(),
             plan: None,
             windows: Vec::new(),
             error: Some(reason.into()),
@@ -64,7 +64,7 @@ mod tests {
     #[test]
     fn ok_requires_no_error_and_windows() {
         let unavailable = ProviderStatus {
-            name: "claude",
+            name: "claude".into(),
             plan: None,
             windows: Vec::new(),
             error: Some("no credentials".to_string()),
@@ -72,7 +72,7 @@ mod tests {
         assert!(!unavailable.ok());
 
         let empty = ProviderStatus {
-            name: "claude",
+            name: "claude".into(),
             plan: None,
             windows: Vec::new(),
             error: None,
