@@ -1,7 +1,7 @@
 use jiff::Timestamp;
 use serde::Deserialize;
 use std::collections::BTreeMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 // ---------- Claude ----------
 
@@ -191,8 +191,8 @@ fn env_path(var: &str) -> Option<PathBuf> {
         .map(PathBuf::from)
 }
 
-fn read(path: PathBuf) -> Result<String, String> {
-    std::fs::read_to_string(&path).map_err(|e| format!("cannot read {}: {e}", path.display()))
+fn read(path: &Path) -> Result<String, String> {
+    std::fs::read_to_string(path).map_err(|e| format!("cannot read {}: {e}", path.display()))
 }
 
 /// All Claude credential sources present on this machine, in Claude Code's own
@@ -223,7 +223,7 @@ pub fn claude_cred_sources(now: Timestamp) -> Vec<(&'static str, Result<ClaudeCr
         }
     }
     if let Some(dir) = env_path("CLAUDE_CONFIG_DIR").or_else(|| home().map(|h| h.join(".claude")))
-        && let Ok(json) = read(dir.join(".credentials.json"))
+        && let Ok(json) = read(&dir.join(".credentials.json"))
     {
         sources.push(("credentials file", parse_claude_creds(&json, now)));
     }
@@ -237,9 +237,8 @@ pub fn load_codex_creds() -> Result<CodexCreds, String> {
     load_codex_creds_from_path(&dir.join("auth.json"))
 }
 
-pub fn load_codex_creds_from_path(path: &std::path::Path) -> Result<CodexCreds, String> {
-    let json = read(path.to_path_buf())
-        .map_err(|e| format!("no credentials — run 'codex login' ({e})"))?;
+pub fn load_codex_creds_from_path(path: &Path) -> Result<CodexCreds, String> {
+    let json = read(path).map_err(|e| format!("no credentials — run 'codex login' ({e})"))?;
     parse_codex_auth(&json)
 }
 
@@ -250,7 +249,7 @@ pub fn load_grok_creds(now: Timestamp) -> Result<GrokCreds, String> {
             .ok_or("cannot determine home directory")?
             .join("auth.json"),
     );
-    let json = read(path).map_err(|e| format!("no credentials — run 'grok login' ({e})"))?;
+    let json = read(&path).map_err(|e| format!("no credentials — run 'grok login' ({e})"))?;
     parse_grok_auth(&json, now)
 }
 
