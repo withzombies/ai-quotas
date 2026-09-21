@@ -234,7 +234,11 @@ pub fn load_codex_creds() -> Result<CodexCreds, String> {
     let dir = env_path("CODEX_HOME")
         .or_else(|| home().map(|h| h.join(".codex")))
         .ok_or("cannot determine home directory")?;
-    let json = read(dir.join("auth.json"))
+    load_codex_creds_from_path(&dir.join("auth.json"))
+}
+
+pub fn load_codex_creds_from_path(path: &std::path::Path) -> Result<CodexCreds, String> {
+    let json = read(path.to_path_buf())
         .map_err(|e| format!("no credentials — run 'codex login' ({e})"))?;
     parse_codex_auth(&json)
 }

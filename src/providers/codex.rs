@@ -9,11 +9,30 @@ const REFRESH_URL: &str = "https://auth.openai.com/oauth/token";
 const REFRESH_CLIENT_ID: &str = "app_EMoamEEZ73f0CkXaXp7hrann";
 
 pub fn fetch(base_url: &str, now: Timestamp) -> ProviderStatus {
-    try_fetch(base_url, now).unwrap_or_else(|e| ProviderStatus::unavailable(NAME, e))
+    crate::creds::load_codex_creds()
+        .and_then(|creds| try_fetch(base_url, now, creds))
+        .unwrap_or_else(|e| ProviderStatus::unavailable(NAME, e))
 }
 
-fn try_fetch(base_url: &str, now: Timestamp) -> Result<ProviderStatus, String> {
-    let creds = crate::creds::load_codex_creds()?;
+/// Query an explicit profile without changing process-wide environment or credentials.
+pub fn fetch_profile(
+    base_url: &str,
+    now: Timestamp,
+    path: &std::path::Path,
+    label: &str,
+) -> ProviderStatus {
+    let mut status = crate::creds::load_codex_creds_from_path(path)
+        .and_then(|creds| try_fetch(base_url, now, creds))
+        .unwrap_or_else(|e| ProviderStatus::unavailable(NAME, e));
+    status.name = format!("codex ({label})");
+    status
+}
+
+fn try_fetch(
+    base_url: &str,
+    now: Timestamp,
+    creds: crate::creds::CodexCreds,
+) -> Result<ProviderStatus, String> {
     let mut resp = usage_request(base_url, &creds.access_token, creds.account_id.as_deref())?;
     if matches!(resp.status, 401 | 403)
         && let Some(refresh_token) = &creds.refresh_token
@@ -175,7 +194,7 @@ pub fn parse_usage(body: &str, now: Timestamp) -> Result<ProviderStatus, String>
         return Err("schema mismatch: no rate-limit windows in response".to_string());
     }
     Ok(ProviderStatus {
-        name: NAME,
+        name: NAME.into(),
         plan: usage.plan_type,
         windows,
         error: None,
